@@ -5,15 +5,18 @@ from itertools import groupby
 
 
 def online_check(client_socket: socket.socket):
+    """
+    Функция проверки сокета на доступность. Посылает знак &, который на принимающей стороне необходимо отфильтровывать
+
+    :param client_socket: проверяемый сокет
+    :return:
+    """
     try:
         client_socket.send("&".encode('utf-8'))
-        # print(f"online check client {client_socket}: true")
         return True
     except ConnectionResetError:
-        # print(f"online check client {client_socket}: false")
         return False
     except AttributeError:
-        # print(f"online check client {client_socket}: false")
         return False
 
 
@@ -42,11 +45,16 @@ class Server:
             time.sleep(1)
 
     def check_user_data(self, client_socket: socket.socket):
+        """
+        Функция проверки данных подключенного клиента. В зависимости от результата запускается соответствующий поток
+
+        :param client_socket: Сокет, по которому проводится проверка данных
+        """
         try:
             data = client_socket.recv(1024)
-            print(data.decode('utf-8').split('-=-')[1::])
+            # print(data.decode('utf-8').split('-=-')[1::])
             [nick, msg] = data.decode('utf-8').split('-=-')[1::]
-            print(nick, msg)
+            # print(nick, msg)
             if nick == 'main':
                 self.main_client = client_socket
                 threading.Thread(target=self.main_message_handler, args=(client_socket,)).start()
@@ -56,13 +64,16 @@ class Server:
                     client_socket.send("-=-server-=-You are connected to the server successfully".encode('utf-8'))
                     if online_check(self.main_client):
                         print("online")
-                        client_socket.send("-=-server-=-You are connected to the main client successfully".encode('utf-8'))
+                        client_socket.send(
+                            "-=-server-=-You are connected to the main client successfully".encode('utf-8'))
                     else:
                         print("offline")
-                        client_socket.send("-=-server-=-The main client is currently offline. Try again later".encode('utf-8'))
+                        client_socket.send(
+                            "-=-server-=-The main client is currently offline. Try again later".encode('utf-8'))
                     threading.Thread(target=self.current_client_message_handler, args=(client_socket,)).start()
                 else:
-                    client_socket.send('-=-server-=-The main client is currently busy. Wait or try again later'.encode('utf-8'))
+                    client_socket.send(
+                        '-=-server-=-The main client is currently busy. Wait or try again later'.encode('utf-8'))
                     threading.Thread(target=self.waiting_client, args=(client_socket,)).start()
             else:
                 client_socket.send("-=-server-=-Incorrect signature".encode('utf-8'))
@@ -71,6 +82,11 @@ class Server:
         time.sleep(1)
 
     def main_message_handler(self, main_client_socket: socket.socket):
+        """
+        Функция запускается из потока и обрабатывает сообщения, полученные от экспериментальной установки
+
+        :param main_client_socket: сокет экспериментальной установки
+        """
         print('main client connected')
         while True:
             try:
@@ -103,6 +119,13 @@ class Server:
             time.sleep(1)
 
     def current_client_message_handler(self, client_socket: socket.socket):
+        """
+        Функция запускается из потока и обрабатывает сообщения, полученные от клиента, подключенного к
+        экспериментальной установке.
+
+        :param client_socket: сокет текущего клиента
+
+        """
         print("current client connected")
         while True:
             try:
@@ -135,24 +158,34 @@ class Server:
             time.sleep(1)
 
     def waiting_client(self, waiting_client_socket: socket.socket):
+        """
+        Функция запускается из потока и обрабатывает сообщения, полученные от клиента, который еще не подключился к
+        экспериментальной установке (если она оффлайн или занята)
+
+        :param waiting_client_socket: сокет ожидающего клиента
+        """
         print("waiting client connected")
         while True:
             try:
                 if online_check(waiting_client_socket):
                     if online_check(self.main_client):
                         if self.main_client_available_status:
-                            waiting_client_socket.send("=-server-=-You are connected to the main client".encode('utf-8'))
+                            waiting_client_socket.send(
+                                "=-server-=-You are connected to the main client".encode('utf-8'))
                             threading.Thread(target=self.current_client_message_handler, args=(waiting_client_socket,))
                         else:
                             time.sleep(10)
-                            waiting_client_socket.send('-=-server-=-The main client is still busy. Retrying in 10 seconds'.encode('utf-8'))
+                            waiting_client_socket.send(
+                                '-=-server-=-The main client is still busy. Retrying in 10 seconds'.encode('utf-8'))
                     else:
-                        waiting_client_socket.send("-=-server-=-Main client is offline. Retrying in 10 seconds".encode('utf-8'))
+                        waiting_client_socket.send(
+                            "-=-server-=-Main client is offline. Retrying in 10 seconds".encode('utf-8'))
                         time.sleep(10)
                 else:
                     break
             except socket.error:
-                print(f"Waiting client disconnected. main {self.main_client} and waiting client {waiting_client_socket}")
+                print(
+                    f"Waiting client disconnected. main {self.main_client} and waiting client {waiting_client_socket}")
                 break
             time.sleep(1)
 
