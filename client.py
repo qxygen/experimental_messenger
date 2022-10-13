@@ -4,23 +4,38 @@ import threading
 from itertools import groupby
 
 
-def response_func(data) -> str:
+def response_func(data: str) -> str:
+    """
+    Функция вызывается при необходимости ответа на данные, посланные экспериментальной установкой. В нее добавляется
+    необходимая логика.
+
+    :param data: строка данных, полученных от экспериментальной установки
+
+    :return: строка, которую нужно будет отправить экспериментальной установке
+    """
     print(data)
     resp = input("input: ")
     return resp
 
 
 def online_check(client_socket: socket.socket):
+    """
+    Функция проверки сокета на доступность. Посылает знак &, который на принимающей стороне необходимо отфильтровывать
+
+    :param client_socket: проверяемый сокет
+    :return:
+    """
     try:
         client_socket.send("&".encode('utf-8'))
-        # print(f"online check client {client_socket}: true")
         return True
     except ConnectionResetError:
-        # print(f"online check client {client_socket}: false")
         return False
 
 
 class Client:
+    """
+    Класс клиента
+    """
     def __init__(self):
         self.zero_time = time.time()
         self.server_ip = '192.168.43.150'
@@ -34,7 +49,6 @@ class Client:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         socket_connected_ = False
-        print("connect")
         while not socket_connected_:
             try:
                 self.server_socket.connect((self.server_ip, self.server_port))
@@ -50,27 +64,24 @@ class Client:
             server_socket_.send(f"-=-nm-=-{resp}".encode('utf-8'))
         except socket.error:
             self.connect(server_socket_)
-        print("mainloop")
+
         while True:
             try:
-                # print('.')
                 data = '&'
-                # data = server_socket_.recv(1024).decode('utf-8')
                 while [el for el, _ in groupby(sorted(data.split('&')))] == ['']:
                     data = self.server_socket.recv(1024).decode('utf-8')
-                # print(data)
-                data = data
-                # print(data.split("-=-")[1::])
-                data_array = data.split("-=-")[1::]
-                if data_array[0] == 'main':
-                    ans = response_func(data_array[1])
-                    server_socket_.send(f"-=-nm-=-time: {round(time.time() - self.zero_time)}s, ans: {ans}".encode('utf-8'))
-                else:
-                    print(f"{data_array[0]}: {data_array[1]}")
-                    pass
-                # except ValueError:
-                    # print(f"error occured: {data.split('-=-')}")
 
+                try:
+                    data_array = data.split("-=-")[1::]
+                    if data_array[0] == 'main':
+                        ans = response_func(data_array[1])
+                        server_socket_.send(
+                            f"-=-nm-=-time: {round(time.time() - self.zero_time)}s, ans: {ans}".encode('utf-8'))
+                    else:
+                        print(f"{data_array[0]}: {data_array[1]}")
+                        pass
+                except ValueError:
+                    print(f"error occurred: {data.split('-=-')}")
             except ConnectionResetError:
                 self.connect()
 
