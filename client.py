@@ -3,6 +3,15 @@ import time
 import threading
 from itertools import groupby
 
+zero_time = time.time()
+
+
+def clean_data(s: str, symbol='&'):
+    pos = s.find(symbol)
+    while pos != -1:
+        s[:] = s[:pos] + s[pos + 1:]
+        pos = s.find(symbol)
+    return s
 
 def response_func(data: str) -> str:
     """
@@ -13,9 +22,9 @@ def response_func(data: str) -> str:
 
     :return: строка, которую нужно будет отправить экспериментальной установке
     """
-    print(data)
+    print(f"main: {data}")
     resp = input("input: ")
-    return resp
+    return f"-=-nm-=-time: {round(time.time() - zero_time)}s, ans: {resp}"
 
 
 def online_check(client_socket: socket.socket):
@@ -37,10 +46,9 @@ class Client:
     Класс клиента
     """
     def __init__(self):
-        self.zero_time = time.time()
-        self.server_ip = '192.168.43.150'
-        self.server_port = 5556
-
+        self.server_ip = '192.168.111.89' # input("IP: ")
+        self.server_port = 5556 # int(input("Port: "))
+        self.zero_time = zero_time
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connect()
         self.server_socket.send('-=-nm-=-first message from client'.encode('utf-8'))
@@ -61,7 +69,7 @@ class Client:
     def main_loop(self, server_socket_: socket.socket):
         try:
             resp = response_func("first msg")
-            server_socket_.send(f"-=-nm-=-{resp}".encode('utf-8'))
+            server_socket_.send(resp.encode('utf-8'))
         except socket.error:
             self.connect(server_socket_)
 
@@ -70,18 +78,25 @@ class Client:
                 data = '&'
                 while [el for el, _ in groupby(sorted(data.split('&')))] == ['']:
                     data = self.server_socket.recv(1024).decode('utf-8')
-
+                data = clean_data(data)
                 try:
                     data_array = data.split("-=-")[1::]
                     if data_array[0] == 'main':
-                        ans = response_func(data_array[1])
-                        server_socket_.send(
-                            f"-=-nm-=-time: {round(time.time() - self.zero_time)}s, ans: {ans}".encode('utf-8'))
+                        resp = response_func(data_array[1])
+                        server_socket_.send(resp.encode('utf-8'))
+                    elif data_array[0] == 'server':
+                        if data_array[1] == 'You are connected to the main client':
+                            print(f"server: You are connected to the main client. Your first command is delivered")
+                            # resp = response_func("first msg")
+                            # server_socket_.send(resp.encode('utf-8'))
+                        else:
+                            print(f"{data_array[0]}: {data_array[1]}")
+
                     else:
                         print(f"{data_array[0]}: {data_array[1]}")
-                        pass
+
                 except ValueError:
-                    print(f"error occurred: {data.split('-=-')}")
+                    print(f"error occurred: {data}")
             except ConnectionResetError:
                 self.connect()
 
