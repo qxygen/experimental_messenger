@@ -9,9 +9,10 @@ zero_time = time.time()
 def clean_data(s: str, symbol='&'):
     pos = s.find(symbol)
     while pos != -1:
-        s[:] = s[:pos] + s[pos + 1:]
+        s = s[:pos] + s[pos + 1:]
         pos = s.find(symbol)
     return s
+
 
 def response_func(data: str) -> str:
     """
@@ -45,13 +46,15 @@ class Client:
     """
     Класс клиента
     """
+
     def __init__(self):
-        self.server_ip = '192.168.111.89' # input("IP: ")
-        self.server_port = 5556 # int(input("Port: "))
+        self.server_ip = '192.168.43.150'  # input("IP: ")
+        self.server_port = 5556  # int(input("Port: "))
         self.zero_time = zero_time
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connect()
-        self.server_socket.send('-=-nm-=-first message from client'.encode('utf-8'))
+        # self.server_socket.send('-=-nm-=-first message from client'.encode('utf-8'))
+        # print(self.server_socket.recv(1024))
 
     def connect(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -60,6 +63,8 @@ class Client:
         while not socket_connected_:
             try:
                 self.server_socket.connect((self.server_ip, self.server_port))
+                self.server_socket.send('-=-nm-=-first message from client'.encode('utf-8'))
+                print(self.server_socket.recv(1024))
                 socket_connected_ = True
                 threading.Thread(target=self.main_loop, args=(self.server_socket,)).start()
             except socket.error:
